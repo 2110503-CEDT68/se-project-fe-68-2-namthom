@@ -446,5 +446,3 @@ export default function ChatWidget() {
     </>
   );
 }
-
-// chat history markdown rendering
