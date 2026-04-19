@@ -348,4 +348,3 @@ export default function BookingPage() {
     </main>
   );
 }
-// booking flow integration
