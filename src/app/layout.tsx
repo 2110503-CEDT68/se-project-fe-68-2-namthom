@@ -4,6 +4,8 @@ import "./globals.css";
 import ReduxProvider from "@/redux/ReduxProvider";
 import TopMenu from "@/components/TopMenu";
 import ChatWidget from "@/components/ChatWidget";
+import { ToastProvider } from "@/components/ToastContext";
+import Footer from "@/components/Footer";
 
 const cinzel = Cinzel({
   subsets: ["latin"],
@@ -28,11 +30,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${cinzel.variable} ${inter.variable} antialiased bg-[#1A1A1A] text-[#D4CFC6]`}>
+      <body className={`${cinzel.variable} ${inter.variable} antialiased bg-dungeon-canvas text-dungeon-primary flex flex-col min-h-screen`}>
         <ReduxProvider>
-          <TopMenu />
-          {children}
-          <ChatWidget />
+          <ToastProvider>
+            <TopMenu />
+            {children}
+            <ChatWidget />
+            <Footer />
+          </ToastProvider>
         </ReduxProvider>
       </body>
     </html>
