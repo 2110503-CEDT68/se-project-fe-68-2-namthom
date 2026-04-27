@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
 import { QRCodeSVG } from 'qrcode.react';
 import QRCodeDisplay from '@/components/QRCodeDisplay';
+import { QRSkeleton, FadeIn } from '@/components/Skeletons';
 
 interface BookingInfo {
   success: boolean;
@@ -50,11 +51,7 @@ export default function QRPage() {
     : `/qr/${token}`;
 
   if (loading) {
-    return (
-      <main className="min-h-screen bg-dungeon-canvas flex items-center justify-center">
-        <div className="text-dungeon-accent text-xl">Verifying...</div>
-      </main>
-    );
+    return <QRSkeleton />;
   }
 
   if (!booking?.success) {
@@ -81,7 +78,7 @@ export default function QRPage() {
   const date = new Date(d.resvDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const time = new Date(d.resvDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
-  return (
+  return (<FadeIn>
     <main className="min-h-screen bg-dungeon-canvas flex items-center justify-center p-4">
       <div className="bg-dungeon-surface border border-dungeon-outline rounded-xl max-w-md w-full overflow-hidden">
         {/* Header */}
@@ -130,5 +127,5 @@ export default function QRPage() {
         </div>
       </div>
     </main>
-  );
+  </FadeIn>);
 }
