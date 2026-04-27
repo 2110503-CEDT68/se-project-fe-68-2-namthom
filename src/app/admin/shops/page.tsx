@@ -9,7 +9,7 @@ import { getShops, createShop, updateShop, deleteShop, Shop, ShopQueryParams, ad
 import Pagination from '@/components/Pagination';
 import ErrorBanner from '@/components/ErrorBanner';
 import AccessDenied from '@/components/AccessDenied';
-import { SkeletonPage } from '@/components/Skeleton';
+import { AdminShopsSkeleton, FadeIn } from '@/components/Skeletons';
 import ShopCard from '@/components/admin/ShopCard';
 import ShopModal from '@/components/admin/ShopModal';
 import { PaginationData } from '@/types/api';
@@ -136,9 +136,21 @@ export default function AdminShopsPage() {
   };
 
   const handleAddTiktok = async () => {
-    if (!editingShop || !newTiktokUrl.includes('tiktok.com') || !token) return;
+    if (!editingShop || !token) return;
+    const url = newTiktokUrl.trim();
+    // Strict validation: must be https://tiktok.com/... or https://www.tiktok.com/...
+    const tiktokUrlRegex = /^https:\/\/(?:www\.)?tiktok\.com\/@[^\s]+$/;
+    if (!tiktokUrlRegex.test(url)) {
+      addToast('Invalid TikTok URL. Must be https://tiktok.com/@... or https://www.tiktok.com/@...');
+      return;
+    }
+    // Prevent XSS: reject any URL containing <, >, ", ', or javascript:
+    if (/[<>"']|javascript:/i.test(url)) {
+      addToast('Invalid characters in URL');
+      return;
+    }
     try {
-      const data = await addTiktokLinks(editingShop._id, [newTiktokUrl], token);
+      const data = await addTiktokLinks(editingShop._id, [url], token);
       if (data.success) {
         setFormData(prev => ({ ...prev, tiktokLinks: data.data }));
         setNewTiktokUrl('');
@@ -172,9 +184,9 @@ export default function AdminShopsPage() {
   };
 
   if (user?.role !== 'admin') return <AccessDenied />;
-  if (loading && shops.length === 0) return <main className="min-h-screen bg-dungeon-canvas py-8 px-4"><SkeletonPage type="table" /></main>;
+  if (loading && shops.length === 0) return <AdminShopsSkeleton />;
 
-  return (
+  return (<FadeIn>
     <>
     <main className="min-h-screen bg-dungeon-canvas py-8">
       <div className="max-w-7xl mx-auto px-4">
@@ -254,5 +266,5 @@ export default function AdminShopsPage() {
       onCancel={() => setPendingRemoveTiktok(null)}
     />
     </>
-  );
+  </FadeIn>);
 }
