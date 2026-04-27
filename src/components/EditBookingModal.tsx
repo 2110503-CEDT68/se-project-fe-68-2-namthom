@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Reservation, Shop } from '@/interface';
 import { updateReservation } from '@/libs/reservations';
 import { getShop } from '@/libs/shops';
+import { validateReservationTime } from '@/utils/shopHours';
 
 interface EditBookingModalProps {
   reservation: Reservation;
@@ -60,145 +61,19 @@ export default function EditBookingModal({
     }
   };
 
-  const isWithinShopHours = (date: Date): boolean => {
-    if (!shop || !shop.openTime || !shop.closeTime) return true;
-
-    const hours = date.getHours();
-    const minutes = date.getMinutes();
-    const timeValue = hours * 60 + minutes;
-
-    const [openHour, openMin] = shop.openTime.split(':').map(Number);
-    const [closeHour, closeMin] = shop.closeTime.split(':').map(Number);
-
-    const openValue = openHour * 60 + (openMin || 0);
-    let closeValue = closeHour * 60 + (closeMin || 0);
-
-    // Handle midnight (00:00) as end of day (24:00)
-    if (closeValue === 0) {
-      closeValue = 24 * 60; // 1440 minutes = 24:00
-    }
-
-    // Check if hours span midnight (close time is earlier than open time)
-    if (closeValue < openValue) {
-      // Overnight hours: valid if after open OR before close
-      // e.g., 21:00-02:00: 23:00 is valid (after 21:00), 01:00 is valid (before 02:00)
-      return timeValue >= openValue || timeValue <= closeValue;
-    }
-
-    // Normal hours: valid if between open and close
-    return timeValue >= openValue && timeValue <= closeValue;
-  };
-
-  // Parse time string to minutes since midnight
-  const parseTimeToMinutes = (time: string): number => {
-    const [hour, min] = time.split(':').map(Number);
-    return hour * 60 + min;
-  };
-
-  // Check if service duration fits within shop hours
-  // Returns { valid: boolean, endTime: string, error?: string }
-  const checkServiceDuration = (
-    startDate: Date,
-    durationMinutes: number
-  ): { valid: boolean; endTime: string; error?: string } => {
-    if (!shop || !shop.openTime || !shop.closeTime) {
-      return { valid: true, endTime: '' };
-    }
-
-    const startValue = startDate.getHours() * 60 + startDate.getMinutes();
-    const openValue = parseTimeToMinutes(shop.openTime);
-    let closeValue = parseTimeToMinutes(shop.closeTime);
-
-    // Handle midnight (00:00) as end of day (24:00)
-    if (closeValue === 0) {
-      closeValue = 24 * 60;
-    }
-
-    const endValue = startValue + durationMinutes;
-    const endHour = Math.floor(endValue / 60) % 24;
-    const endMin = endValue % 60;
-    const endTime = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
-
-    // Check if hours span midnight
-    if (closeValue < openValue) {
-      // Overnight hours
-      if (startValue >= openValue) {
-        // Starting after open (same day)
-        if (endValue <= 24 * 60) {
-          // Ends same day, must be before midnight
-          return { valid: true, endTime };
-        } else {
-          // Wraps to next day, must end before close
-          const nextDayEnd = endValue - 24 * 60;
-          if (nextDayEnd <= closeValue) {
-            return { valid: true, endTime };
-          }
-          return {
-            valid: false,
-            endTime,
-            error: `Service ends at ${endTime} but shop closes at ${shop.closeTime}`,
-          };
-        }
-      } else if (startValue <= closeValue) {
-        // Starting before close (next day portion)
-        if (endValue <= closeValue) {
-          return { valid: true, endTime };
-        }
-        return {
-          valid: false,
-          endTime,
-          error: `Service ends at ${endTime} but shop closes at ${shop.closeTime}`,
-        };
-      }
-
-      return {
-        valid: false,
-        endTime,
-        error: `Invalid time for overnight hours`,
-      };
-    }
-
-    // Normal hours (same day)
-    if (endValue > closeValue) {
-      return {
-        valid: false,
-        endTime,
-        error: `Service ends at ${endTime} but shop closes at ${shop.closeTime}`,
-      };
-    }
-
-    return { valid: true, endTime };
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    // Convert local datetime-local value to Date object
     const selectedDate = new Date(newDate);
-    const now = new Date();
-
-    // Check if date is in the future
-    if (selectedDate <= now) {
-      setError('Please select a future date and time');
-      setLoading(false);
-      return;
-    }
-
-    // Check if within shop hours
-    if (!isWithinShopHours(selectedDate)) {
-      setError(`Shop is only open from ${shop?.openTime} to ${shop?.closeTime}`);
-      setLoading(false);
-      return;
-    }
-
-    // Check if service duration fits within shop hours
     const serviceDuration = typeof reservation.service === 'object' ? reservation.service.duration : 0;
-    if (serviceDuration > 0) {
-      const durationCheck = checkServiceDuration(selectedDate, serviceDuration);
-      if (!durationCheck.valid) {
-        setError(durationCheck.error || 'Service duration exceeds shop hours');
+
+    // Validate against shop hours using shared utility
+    if (shop?.openTime && shop?.closeTime) {
+      const validation = validateReservationTime(selectedDate, shop.openTime, shop.closeTime, serviceDuration > 0 ? serviceDuration : undefined);
+      if (!validation.ok) {
+        setError(validation.error!);
         setLoading(false);
         return;
       }
@@ -233,17 +108,17 @@ export default function EditBookingModal({
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#2B2B2B] border border-[#403A36] rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-2xl font-bold text-[#F0E5D8] mb-4">
+      <div className="bg-dungeon-surface border border-dungeon-outline rounded-lg p-6 w-full max-w-md">
+        <h2 className="text-2xl font-bold text-dungeon-header-text mb-4">
           {isAdmin ? 'Edit Booking (Admin)' : 'Edit Your Booking'}
         </h2>
         
-        <div className="mb-4 text-[#8A8177]">
-          <p><span className="text-[#D4CFC6]">Shop:</span> {shopName}</p>
-          <p><span className="text-[#D4CFC6]">Service:</span> {serviceName} {serviceDuration > 0 && `(${serviceDuration} mins)`}</p>
+        <div className="mb-4 text-dungeon-secondary">
+          <p><span className="text-dungeon-primary">Shop:</span> {shopName}</p>
+          <p><span className="text-dungeon-primary">Service:</span> {serviceName} {serviceDuration > 0 && `(${serviceDuration} mins)`}</p>
           {shop && (
             <p className="text-sm mt-2">
-              <span className="text-[#A88C6B]">Shop Hours:</span> {shop.openTime} - {shop.closeTime}
+              <span className="text-dungeon-sub-header">Shop Hours:</span> {shop.openTime} - {shop.closeTime}
             </p>
           )}
         </div>
@@ -256,14 +131,14 @@ export default function EditBookingModal({
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-[#8A8177] text-sm mb-2">
+            <label className="block text-dungeon-secondary text-sm mb-2">
               New Appointment Date & Time
             </label>
             <input
               type="datetime-local"
               value={newDate}
               onChange={(e) => setNewDate(e.target.value)}
-              className="w-full bg-[#1A1A1A] border border-[#403A36] rounded-lg px-4 py-2 text-[#F0E5D8] focus:border-[#E57A00] focus:outline-none"
+              className="w-full bg-dungeon-canvas border border-dungeon-outline rounded-lg px-4 py-2 text-dungeon-header-text focus:border-dungeon-accent focus:outline-none"
               required
             />
           </div>
@@ -272,14 +147,14 @@ export default function EditBookingModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-[#454545] text-[#D4CFC6] rounded hover:bg-[#5a5a5a] transition-colors"
+              className="flex-1 px-4 py-2 bg-dungeon-star-empty text-dungeon-primary rounded hover:bg-dungeon-star-half transition-colors"
               disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-[#E57A00] text-[#1A110A] font-bold rounded hover:bg-[#c46a00] transition-colors"
+              className="flex-1 px-4 py-2 bg-dungeon-accent text-dungeon-dark-text font-bold rounded hover:bg-dungeon-accent-dark transition-colors"
               disabled={loading}
             >
               {loading ? 'Updating...' : 'Update Booking'}

@@ -1,66 +1,26 @@
-export interface User {
-  _id: string;
-  name: string;
-  email: string;
-  telephone: string;
-  role: 'user' | 'admin';
-}
-
-export interface Shop {
-  _id: string;
-  name: string;
-  address: string;
-  location: string;
-  tel: string;
-  map: string;
-  openTime: string;
-  closeTime: string;
-  priceRangeMin: number;
-  priceRangeMax: number;
-  rating?: number;
-  photo?: string;
-  photoProxy?: string; // backend-provided proxy to Google Places Photos with fallback
-  placeId?: string;
-  description?: string;
-  tiktokLinks?: string[];
-}
-
-export interface Service {
-  _id: string;
-  name: string;
-  area: string;
-  duration: number;
-  oil: string;
-  price: number;
-  shop: string;
-}
+import { User } from '@/types/user';
 
 export interface Reservation {
   _id: string;
   resvDate: string;
   user: User | string;
-  shop: Shop | string;
-  service: Service | string;
+  shop: { _id: string; name: string; location: string; } | string;
+  service: { _id: string; name: string; duration: number; price: number; } | string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  promotionCode?: string | null;
+  discountAmount?: number;
+  originalPrice?: number;
+  finalPrice?: number;
+  slipImageUrl?: string | null;
+  paymentStatus?: 'none' | 'waiting_verification' | 'approved' | 'rejected';
+  qrToken?: string;
+  qrActive?: boolean;
   createdAt: string;
 }
 
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-export interface RegisterData {
-  name: string;
-  email: string;
-  telephone: string;
-  password: string;
-}
-
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  token?: string;
-  count?: number;
-}
+// Re-export types from their canonical locations
+export type { User } from '@/types/user';
+export type { Review, ShopReviewsResponse } from '@/types/review';
+export type { LoginCredentials, RegisterData, ApiResponse, PaginationData } from '@/types/api';
+export type { Shop, ShopQueryParams } from '@/libs/shops';
+export type { Service, ServiceQueryParams } from '@/libs/services';

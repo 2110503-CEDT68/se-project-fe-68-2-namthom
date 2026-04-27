@@ -27,7 +27,9 @@ export interface Shop {
   photo?: string;
   photoProxy?: string;
   placeId?: string;
-  description?: string;
+  hasGooglePhoto?: boolean;
+  platformRating?: number;
+  platformReviewCount?: number;
   tiktokLinks?: string[];
 }
 
@@ -131,19 +133,6 @@ export async function removeTiktokLink(id: string, link: string, token: string) 
       'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify({ link })
-  });
-  return response.json();
-}
-
-// Description management
-export async function updateShopDescription(id: string, description: string, token: string) {
-  const response = await fetch(`${API_URL}/shops/${id}/description`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify({ description })
   });
   return response.json();
 }
