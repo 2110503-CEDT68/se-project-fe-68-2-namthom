@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import { GenericSkeleton, FadeIn } from '@/components/Skeletons';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { resetPassword } from '@/libs/auth';
@@ -129,13 +130,13 @@ function ResetPasswordForm() {
 }
 
 export default function ResetPasswordPage() {
-  return (
+  return (<FadeIn>
     <Suspense fallback={
       <main className="min-h-screen bg-dungeon-canvas flex items-center justify-center">
-        <p className="text-dungeon-secondary">Loading...</p>
+      <GenericSkeleton />
       </main>
     }>
       <ResetPasswordForm />
     </Suspense>
-  );
+  </FadeIn>);
 }
